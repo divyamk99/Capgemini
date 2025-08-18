@@ -1,0 +1,47 @@
+CREATE OR REPLACE PROCEDURE DAAS_ADHOC.TRIP_DEL_ID_ADHOC_PROC()
+RETURNS VARCHAR NOT NULL
+LANGUAGE JAVASCRIPT
+EXECUTE AS OWNER
+AS
+$$
+
+proc_output = "";
+proc_step = "";
+
+try
+{
+	snowflake.execute( {sqlText: "BEGIN;" } );
+	
+
+	snowflake.execute( {sqlText: `CREATE OR REPLACE TABLE DAAS_TEMP.DEL_IDS AS
+	SELECT TRIP_MASTER_ID FROM DAAS_CORE.TRIP_MASTER
+	WHERE GUEST_UNIQUE_ID IN (SELECT DISTINCT GUEST_UNIQUE_ID FROM DAAS_TEMP.METRIC_GUID)
+	` } );
+	
+	
+	snowflake.execute( {sqlText: "DELETE FROM DAAS_CORE.TRIP_DETAIL WHERE TRIP_MASTER_ID IN (SELECT TRIP_MASTER_ID FROM DAAS_TEMP.DEL_IDS);"} );
+	snowflake.execute( {sqlText: "DELETE FROM DAAS_CORE.TRIP_MASTER WHERE TRIP_MASTER_ID IN (SELECT TRIP_MASTER_ID FROM DAAS_TEMP.DEL_IDS);"} );
+	snowflake.execute( {sqlText: "DELETE FROM DAAS_CORE.TRIP_SUMMARY WHERE TRIP_MASTER_ID IN (SELECT TRIP_MASTER_ID FROM DAAS_TEMP.DEL_IDS);"} );
+	snowflake.execute( {sqlText: "DELETE FROM DAAS_CORE.DAILY_ACTIVITY_SUMMARY WHERE TRIP_MASTER_ID IN (SELECT TRIP_MASTER_ID FROM DAAS_TEMP.DEL_IDS);"} );
+	snowflake.execute( {sqlText: "DELETE FROM DAAS_CORE.TRIP_MERGE_PROCESSED WHERE TRIP_MASTER_ID IN (SELECT TRIP_MASTER_ID FROM DAAS_TEMP.DEL_IDS);"} );
+	snowflake.execute( {sqlText: "DELETE FROM DAAS_CORE.TRIP_MERGE_QUEUE WHERE TRIP_MASTER_ID IN (SELECT TRIP_MASTER_ID FROM DAAS_TEMP.DEL_IDS);"} );
+	snowflake.execute( {sqlText: "DELETE FROM DAAS_CORE.TRIP_RECALC_PROCESSED WHERE TRIP_MASTER_ID IN (SELECT TRIP_MASTER_ID FROM DAAS_TEMP.DEL_IDS);"} );
+	snowflake.execute( {sqlText: "DELETE FROM DAAS_CORE.TRIP_RECALC_QUEUE WHERE TRIP_MASTER_ID IN (SELECT TRIP_MASTER_ID FROM DAAS_TEMP.DEL_IDS);"} );
+	
+		
+	snowflake.execute( {sqlText: "COMMIT;" } );
+
+	proc_output = "SUCCESS";
+}	
+
+catch (err) 
+{ 
+snowflake.execute( {sqlText: "ROLLBACK;" } );
+
+proc_output += "\n Failed: Code: " + err.code + "\n  State: " + err.state;
+proc_output += "\n  Message: " + err.message;
+proc_output += "\nStack Trace:\n" + err.stackTraceTxt;
+}
+ 
+return proc_output;
+$$;

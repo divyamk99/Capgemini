@@ -1,0 +1,149 @@
+CREATE OR REPLACE PROCEDURE DAAS_ADHOC.TRIP_METRICS_MISMATCHES_DIGITAL_PLAY_ADHOC_REQUEST_PROC()
+RETURNS VARCHAR NOT NULL
+LANGUAGE JAVASCRIPT
+EXECUTE AS OWNER
+AS
+$$
+
+/*
+#############################################################################################################
+Author: Guruprasad Hegde
+Purpose: To validate digital transactions fact
+Created Date: 08/30/2023
+#############################################################################################################
+*/
+
+proc_output = "";
+proc_step = "";
+
+try
+{
+	snowflake.execute( {sqlText: "BEGIN;" } );
+
+
+	
+	
+	/* Get the descrepency guests between digital_fact and daily_activity_summary */
+	
+	snowflake.execute( {sqlText: `
+        CREATE OR REPLACE TABLE DAAS_TEMP.DIGITAL_TRANSACTION_DISCREPENCY_GUESTS AS 
+		WITH DIGITAL_FACT AS
+        (
+        SELECT 
+             DGXBL.GUEST_UNIQUE_ID
+        	,TO_DATE(DTF.REPORT_DT) AS GUEST_ACTIVITY_DATE
+        	,SUM(DTF.CASINO_GGR) CASINO_GGR
+        	,SUM(DTF.SPORTS_GGR) SPORTS_GGR
+        	,SUM(DTF.POKER_GGR) POKER_GGR
+        	,SUM(DTF.SPORTS_THEO) SPORTS_THEO
+        	,SUM(DTF.CASINO_NET_THEO) CASINO_NET_THEO
+        	,SUM(DTF.CASINO_WAGER) CASINO_WAGER
+        	,SUM(DTF.SPORTS_WAGER) SPORTS_WAGER
+        	,SUM(DTF.CASINO_BONUS) CASINO_BONUS
+        	,SUM(DTF.SPORTS_BONUS) SPORTS_BONUS
+            ,MAX(DTF.UPDATED_DTTM) UPDATED_DTTM
+        FROM 
+            DAAS_CORE.DIGITAL_TRANSACTIONS_FACT DTF
+        LEFT JOIN 
+          (SELECT DISTINCT BRAND_NAME,STATE_CD FROM DAAS_STG_IGAMING.BRAND_VALIDATION) BVAL 
+        ON 
+           DTF.BRAND = REPLACE(BVAL.BRAND_NAME,'''')
+        LEFT JOIN 
+        	DAAS_CORE.DIGITAL_GUEST_XREF_BRIDGE_LKP DGXBL 
+        ON 
+        	DTF.CID = DGXBL.IGAMING_XREF 
+        AND
+            DGXBL.IGAMING_XREF_BRAND = CASE WHEN DTF.SOURCE_SYSTEM_NM = 'William Hill' THEN DTF.BRAND ELSE SUBSTR(BVAL.BRAND_NAME,1,2)||BVAL.STATE_CD END
+        GROUP BY 
+             DGXBL.GUEST_UNIQUE_ID
+        	,DATE(DTF.REPORT_DT) 
+        ),
+        DAILY_ACTIVITY AS
+        (
+        SELECT 
+        GUEST_UNIQUE_ID
+        ,GUEST_ACTIVITY_DATE
+        ,CASINO_GGR
+        ,SPORTS_GGR
+        ,POKER_GGR
+        ,SPORTS_THEO
+        ,CASINO_NET_THEO
+        ,CASINO_WAGER
+        ,SPORTS_WAGER
+        ,CASINO_BONUS
+        ,SPORTS_BONUS
+        ,UPDATED_DTTM
+        FROM DAAS_CORE_MARKETING_VW.DAILY_ACTIVITY_SUMMARY_VW
+        WHERE DIGITAL_FLG = 'Y'  AND TRIP_TYPE = 'PROPERTY'
+        )
+        SELECT 
+         DIGITAL_FACT.GUEST_UNIQUE_ID
+        ,DIGITAL_FACT.GUEST_ACTIVITY_DATE
+        ,DIGITAL_FACT.UPDATED_DTTM DIGITAL_UPDATE_DTTM
+        ,DAILY_ACTIVITY.UPDATED_DTTM DAILY_ACTIVITY_DTTM
+        ,(DIGITAL_FACT.CASINO_GGR - DAILY_ACTIVITY.CASINO_GGR) AS CASINO_GGR_DIFF 
+        ,(DIGITAL_FACT.SPORTS_GGR - DAILY_ACTIVITY.SPORTS_GGR) AS SPORTS_GGR_DIFF
+        ,(DIGITAL_FACT.POKER_GGR - DAILY_ACTIVITY.POKER_GGR) AS POKER_GGR_DIFF
+        ,(DIGITAL_FACT.SPORTS_THEO - DAILY_ACTIVITY.SPORTS_THEO) AS SPORTS_THEO_DIFF
+        ,(DIGITAL_FACT.CASINO_NET_THEO - DAILY_ACTIVITY.CASINO_NET_THEO) AS CASINO_NET_THEO_DIFF 
+        ,(DIGITAL_FACT.CASINO_WAGER - DAILY_ACTIVITY.CASINO_WAGER) AS CASINO_WAGER_DIFF 
+        ,(DIGITAL_FACT.SPORTS_WAGER - DAILY_ACTIVITY.SPORTS_WAGER) AS SPORTS_WAGER_DIFF
+        ,(DIGITAL_FACT.CASINO_BONUS - DAILY_ACTIVITY.CASINO_BONUS) AS CASINO_BONUS_DIFF
+        ,(DIGITAL_FACT.SPORTS_BONUS - DAILY_ACTIVITY.SPORTS_BONUS) AS SPORTS_BONUS_DIFF
+        FROM DIGITAL_FACT
+        JOIN DAILY_ACTIVITY
+        ON DAILY_ACTIVITY.GUEST_UNIQUE_ID = DIGITAL_FACT.GUEST_UNIQUE_ID
+        AND DAILY_ACTIVITY.GUEST_ACTIVITY_DATE = DIGITAL_FACT.GUEST_ACTIVITY_DATE
+        WHERE 
+        (CASINO_GGR_DIFF <> 0
+         OR SPORTS_GGR_DIFF <> 0
+         OR POKER_GGR_DIFF <> 0
+         OR SPORTS_THEO_DIFF <> 0
+         OR CASINO_NET_THEO_DIFF <> 0
+         OR CASINO_WAGER_DIFF <> 0
+         OR SPORTS_WAGER_DIFF <> 0
+         OR CASINO_BONUS_DIFF <> 0
+         OR SPORTS_BONUS_DIFF <> 0
+        ) AND DIGITAL_FACT.GUEST_UNIQUE_ID <> -1
+        AND DAILY_ACTIVITY.UPDATED_DTTM >= DIGITAL_FACT.UPDATED_DTTM
+       ` } );
+	
+	
+	/* Get the descrepency CIDs */
+	
+	snowflake.execute( {sqlText: `
+           CREATE OR REPLACE TABLE DAAS_TEMP.REPLAY_CID AS 
+		   SELECT DISTINCT CID 
+           FROM 
+               DAAS_CORE.DIGITAL_TRANSACTIONS_FACT DTF
+		   LEFT JOIN 
+               (SELECT DISTINCT BRAND_NAME,STATE_CD FROM DAAS_STG_IGAMING.BRAND_VALIDATION) BVAL 
+           ON 
+               DTF.BRAND = REPLACE(BVAL.BRAND_NAME,'''')
+           LEFT JOIN 
+        	   DAAS_CORE.DIGITAL_GUEST_XREF_BRIDGE_LKP DGXBL 
+           ON 
+        	   DTF.CID = DGXBL.IGAMING_XREF 
+           AND
+                DGXBL.IGAMING_XREF_BRAND = CASE WHEN DTF.SOURCE_SYSTEM_NM = 'William Hill' THEN DTF.BRAND ELSE SUBSTR(BVAL.BRAND_NAME,1,2)||BVAL.STATE_CD END 
+		   WHERE 
+                DGXBL.GUEST_UNIQUE_ID IN (SELECT DISTINCT GUEST_UNIQUE_ID FROM  DAAS_TEMP.DIGITAL_TRANSACTION_DISCREPENCY_GUESTS);		
+		`  } );
+	
+
+	snowflake.execute( {sqlText: "COMMIT;" } );
+
+	proc_output = "SUCCESS";
+}	
+
+catch (err) 
+{ 
+snowflake.execute( {sqlText: "ROLLBACK;" } );
+
+proc_output += "\n Failed: Code: " + err.code + "\n  State: " + err.state;
+proc_output += "\n  Message: " + err.message;
+proc_output += "\nStack Trace:\n" + err.stackTraceTxt;
+}
+ 
+return proc_output;
+$$;
