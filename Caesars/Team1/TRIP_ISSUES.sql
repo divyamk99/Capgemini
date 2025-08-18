@@ -1,0 +1,2 @@
+--FLG not matching between TS & DAS for RATINGS, OFFER in PROD
+--FLG not updating between TD & DAS - POS, RATINGS
