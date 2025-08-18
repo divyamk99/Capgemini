@@ -1,0 +1,54 @@
+CREATE PIPE IF NOT EXISTS DAAS_COMMON.STG_ET_BOUNCES_EVENT_DAAS_SNOWPIPE AUTO_INGEST = TRUE 
+AS
+COPY INTO DAAS_EXACT_TARGET_STG.ET_BOUNCES_EVENT_STG
+(
+	I_CLIENTID,                
+	I_SENDID,                  
+	C_SUBSCRIBER_KEY,          
+	C_EMAILADDRESS,            
+	I_SUBSCRIBERID,            
+	I_LISTID,                 
+	D_EVENTDATE,               
+	C_EVENTTYPE,               
+	C_BOUNCE_CATEGORY,         
+	I_SMTP_CODE,               
+	C_BOUNCE_REASON,           
+	C_BATCHID,                 
+	C_TRIGGEREDSENDEXTERNALKEY,
+	SOURCE_SYSTEM_NAME,        
+	TIME_ZONE, 				  
+	CREATED_DATE, 			  
+	CREATED_BY,				  
+	UPDATED_DATE,			  
+	UPDATED_BY, 				  
+	REPLAY_COUNTER, 			  
+	SOURCE_FILE_NAME
+)
+FROM
+(SELECT 
+	TRIM($1),
+	TRIM($2),
+	TRIM($3),
+	TRIM($4),
+	TRIM($5),
+	TRIM($6),
+	TRIM($7),
+	TRIM($8),
+	TRIM($9),
+	TRIM($10),
+	TRIM($11),
+	TRIM($12),
+	TRIM($13),
+	'EXACT TARGET',
+	'US/CENTRAL',
+	CURRENT_TIMESTAMP,
+	CURRENT_USER,
+	CURRENT_TIMESTAMP,
+	CURRENT_USER,
+	0,
+	METADATA$FILENAME
+FROM @DAAS_COMMON.DAAS_EXT_STG_HOSTED/exact-target/out/
+)
+PATTERN = '.*Bounces.*'
+/*FILE_FORMAT = 'DAAS_COMMON.ET_PIPE_FORMAT'*/ 
+file_format = (type = csv field_delimiter = '|' skip_header = 1 escape = '\134' encoding = 'iso-8859-1') ;

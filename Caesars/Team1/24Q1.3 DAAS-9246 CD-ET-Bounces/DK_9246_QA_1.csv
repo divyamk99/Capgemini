@@ -1,0 +1,10 @@
+raw/daas_teradata_raw/ddl/tables/cd_et_bounces_event.sql,table
+staging/daas_stg_exact_target/ddl/table/cd_et_bounces_event_stg.sql,table
+staging/daas_stg_exact_target/ddl/stream/cd_et_bounces_event_stg_stream.sql,stream
+staging/daas_stg_exact_target/ddl/snowpipe/stg_cd_et_bounces_event_daas_snowpipe.sql,pipe
+raw/daas_raw_exact_target/ddl/tables/cd_et_bounces_event_raw.sql,table
+raw/daas_raw_exact_target/ddl/procedures/cd_et_bounces_event_raw_load_proc.sql,procedure
+core/daas_core_marketing_vw/cd_et_bounces_event_vw.sql,view
+common/daas_common/ddl/procedure/core/cd_et_bounces_event_history_extract_proc.sql,procedure
+common/daas_common/ddl/task/stg2raw_cd_et_bounces_event_task.sql,task
+common/daas_common/ddl/task/cd_et_bounces_event_history_extract_task.sql,task

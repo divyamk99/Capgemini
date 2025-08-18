@@ -1,0 +1,12 @@
+core/daas_core_marketing_vw/cd_et_bounces_event_vw.sql,view
+core/daas_core_marketing_vw/et_bounces_event_vw.sql,view
+core/daas_core_marketing_vw/cd_et_clicks_event_vw.sql,view
+core/daas_core_marketing_vw/et_clicks_event_vw.sql,view
+core/daas_core_marketing_vw/cd_et_conversions_vw.sql,view
+core/daas_core_marketing_vw/et_conversions_vw.sql,view
+core/daas_core_marketing_vw/et_open_event_vw.sql,view
+core/daas_core_marketing_vw/cd_et_open_event_vw.sql,view
+core/daas_core_marketing_vw/et_sent_event_vw.sql,view
+core/daas_core_marketing_vw/cd_et_sent_event_vw.sql,view
+core/daas_core_marketing_vw/et_status_change_vw.sql,view
+core/daas_core_marketing_vw/cd_et_status_change_vw.sql,view

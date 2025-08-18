@@ -1,0 +1,10 @@
+raw/daas_raw_ebank/ddl/table/eb_deposit_withdraw_raw.sql,table
+raw/daas_raw_ebank/ddl/view/eb_activity_type_vw.sql,view
+raw/daas_raw_ebank/ddl/view/eb_earning_type_vw.sql,view
+raw/daas_raw_ebank/ddl/view/eb_fund_type_vw.sql,view
+raw/daas_raw_ebank/ddl/view/eb_gaming_hospitality_vw.sql,view
+raw/daas_raw_ebank/ddl/view/eb_source_data_element_vw.sql,view
+raw/daas_raw_ebank/ddl/view/eb_transaction_type_vw.sql,view
+raw/daas_raw_ebank/ddl/view/eb_deposit_withdraw_vw.sql,view
+common/daas_common/ddl/procedure/core/eb_deposit_withdraw_raw_load.sql,procedure
+common/daas_common/ddl/task/eb_deposit_withdraw_raw_load_task.sql,task

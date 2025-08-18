@@ -1,0 +1,838 @@
+Started (10516) at 2023-07-24 09:00:14
++ TABLE=ET_Bounces_Event 
++ [[ ! -f d:/edw_prod/active/ET_AnalyticsFile.20230724.090000/data/Bounces.txt ]] 
++ REQUIRE_LOGON 
++ REQUIRE_SESSIONS 
++ tr -d \n 
++ tr \r \n 
++ sed s/\n/\r\n/g 
++ + dirname d:/edw_prod/tdat/ET_AnalyticsFile.Bounces_Event_load.tp 
++ cd d:/edw_prod/tdat 
++ echo D:/edw_prod/tdat 
+curdur=D:/edw_prod/tdat 
++ cd d:/edw_prod/active/ET_AnalyticsFile.20230724.090000/data 
++ awk -F | {print>(NF==13?"BouncesGood.txt":"BouncesRejects.txt")} d:/edw_prod/active/ET_AnalyticsFile.20230724.090000/data/Bouncestemp.txt 
++ cd D:/edw_prod/tdat 
++ [[ ! -f d:/edw_prod/active/ET_AnalyticsFile.20230724.090000/data/BouncesRejects.txt ]] 
++ rm d:/edw_prod/active/ET_AnalyticsFile.20230724.090000/data/BouncesGood.txt 
++ rm d:/edw_prod/active/ET_AnalyticsFile.20230724.090000/data/Bounces.txt 
++ mv d:/edw_prod/active/ET_AnalyticsFile.20230724.090000/data/Bouncestemp.txt d:/edw_prod/active/ET_AnalyticsFile.20230724.090000/data/Bounces.txt 
++ TPUMP 
++ ksh d:/edw_prod/lib/tpumpName.ksh 9120 
+.LOGTABLE WORKDB.ET_Bounces_Event_log;
+.RUN FILE d:/edw_prod/config/logon/EDW.default;
+
+DROP TABLE WORKDB.ET_Bounces_Event_stg;
+.if &sysrc = 0 or &sysrc = 3807
+then;
+
+CREATE MULTISET TABLE WORKDB.ET_Bounces_Event_stg, FALLBACK ,
+     NO BEFORE JOURNAL,
+     NO AFTER JOURNAL,
+     CHECKSUM = DEFAULT,
+     DEFAULT MERGEBLOCKRATIO
+         (  i_clientid                 INTEGER,
+            i_sendid                   INTEGER NOT NULL,
+            c_subscriber_key           VARCHAR(100)     CHARACTER SET LATIN NOT CASESPECIFIC NOT NULL,
+            c_emailaddress             VARCHAR(100)     CHARACTER SET LATIN NOT CASESPECIFIC,
+            i_subscriberid             INTEGER NOT NULL,
+            i_listid                   INTEGER,
+            d_eventdate                TIMESTAMP(0) FORMAT 'yyyy-mm-ddbhh:mi:ss',
+            c_eventtype                CHAR(6)       CHARACTER SET LATIN NOT CASESPECIFIC,
+            c_bounce_category          VARCHAR(100) CHARACTER SET LATIN NOT CASESPECIFIC,
+            i_smtp_code                INTEGER,
+            c_bounce_reason            VARCHAR(500) CHARACTER SET LATIN NOT CASESPECIFIC,
+            c_batchid                  VARCHAR(100)  CHARACTER SET LATIN NOT CASESPECIFIC NOT NULL,
+            c_triggeredsendexternalkey VARCHAR(100)  CHARACTER SET LATIN NOT CASESPECIFIC
+            )
+       PRIMARY INDEX ( i_sendid, i_subscriberid, c_batchid )
+;
+.else;
+     .logoff &sysrc ;
+.endif
+;
+
+.NAME M205090015939120;
+.BEGIN LOAD SESSIONS 4
+  ERRORTABLE WORKDB.ET_Bounces_Event_et
+  ERRLIMIT 100
+  SERIALIZE ON
+  CHECKPOINT 3
+  PACK 57
+  ROBUST ON
+  MACRODB WORKDB;
+
+/*********************************************************
+ Define layout of the ET_Bounces_Event
+*********************************************************/
+
+
+ .LAYOUT INPUTLAYOUT INDICATORS;
+.field  i_clientid                  * VARCHAR(10);
+.field  i_sendid                    * VARCHAR(10) ;
+.field  c_subscriber_key            * VARCHAR(100) KEY;
+.field  c_emailaddress              * VARCHAR(100) ;
+.field  i_subscriberid              * VARCHAR(20) ;
+.field  i_listid                    * VARCHAR(10);
+.field  d_eventdate                 * VARCHAR(25);
+.field  c_eventtype                 * VARCHAR(10);
+.field  c_bounce_category           * VARCHAR(100);
+.field  i_smtp_code                 * VARCHAR(10);
+.field  c_bounce_reason             * VARCHAR(8000);
+.field  c_batchid                   * VARCHAR(100) ;
+.field  c_triggeredsendexternalkey  * VARCHAR(100);
+
+/*********************************************************
+Process records that are inserts as upserts.
+*********************************************************/
+.DML LABEL UPSERTS;
+INSERT INTO WORKDB.ET_Bounces_Event_stg
+(     i_clientid
+     ,i_sendid
+     ,c_subscriber_key
+     ,c_emailaddress
+     ,i_subscriberid
+     ,i_listid
+     ,d_eventdate
+     ,c_eventtype
+     ,c_bounce_category
+     ,i_smtp_code
+     ,c_bounce_reason
+     ,c_batchid
+     ,c_triggeredsendexternalkey
+)
+VALUES
+(     :i_clientid
+     ,:i_sendid
+     ,:c_subscriber_key
+     ,:c_emailaddress
+     ,:i_subscriberid
+     ,:i_listid
+     ,convert_timestamp(cast(:d_eventdate  as char(25) ))
+     ,CAST(:c_eventtype AS CHAR(6))
+     ,:c_bounce_category
+     ,:i_smtp_code
+     ,:c_bounce_reason
+     ,:c_batchid
+     ,:c_triggeredsendexternalkey
+);
+
+/*********************************************************
+   APPLY insert record action to the staging table
+*********************************************************/
+.IMPORT INFILE d:/edw_prod/active/ET_AnalyticsFile.20230724.090000/data/Bounces.txt
+  FROM 2
+  FORMAT VARTEXT '|'
+  LAYOUT INPUTLAYOUT
+  APPLY UPSERTS;
+  .END LOAD;
+.LOGOFF;
+     ========================================================================
+     =                                                                      =
+     =          Teradata Parallel Data Pump Utility    Release 15.10.01.00  =
+     =          Platform WIN32                                              =
+     =          PID      3760                                               =
+     =                                                                      =
+     ========================================================================
+     =                                                                      =
+     =     Copyright 1997-2015 Teradata Corporation. ALL RIGHTS RESERVED.   =
+     =                                                                      =
+     ========================================================================
+**** 09:00:15 UTY2411 Processing start date: MON JUL 24, 2023
+     ========================================================================
+     =                                                                      =
+     =          Logon/Connection                                            =
+     =                                                                      =
+     ========================================================================
+0001 .LOGTABLE WORKDB.ET_Bounces_Event_log;
+0002 .RUN FILE d:/edw_prod/config/logon/EDW.default;
+0003 .logon edw/pcs_LOAD,;
+**** 09:00:17 UTY8400 Teradata Database Release: 17.10.03.07
+**** 09:00:17 UTY8400 Teradata Database Version: 17.10.03.07
+**** 09:00:17 UTY8400 Default character set: ASCII                         
+**** 09:00:17 UTY8400 Current RDBMS has UDT support
+**** 09:00:17 UTY8400 Current RDBMS has Large Decimal support
+**** 09:00:17 UTY8400 Current RDBMS has Statement Info Parcel support
+**** 09:00:17 UTY8400 Maximum supported buffer size: 1M
+**** 09:00:17 UTY8400 Upsert supported by RDBMS server
+**** 09:00:17 UTY8400 Data Encryption supported by RDBMS server
+**** 09:00:17 UTY8400 Array Support supported by RDBMS server
+**** 09:00:17 UTY8400 Statement Independence supported by RDBMS server
+**** 09:00:22 UTY6211 A successful connect was made to the RDBMS.
+**** 09:00:22 UTY6217 Logtable 'WORKDB.ET_Bounces_Event_log' has been created.
+     ========================================================================
+     =                                                                      =
+     =          Processing Control Statements                               =
+     =                                                                      =
+     ========================================================================
+
+0004 DROP TABLE WORKDB.ET_Bounces_Event_stg;
+**** 09:00:28 UTY1016 'DROP' request successful.
+0005 .if &sysrc = 0 or &sysrc = 3807
+     then;
+**** 09:00:28 UTY2402 Previous statement modified to:
+0006 .if 0 = 0 or 0 = 3807
+     then;
+
+0007 CREATE MULTISET TABLE WORKDB.ET_Bounces_Event_stg, FALLBACK ,
+          NO BEFORE JOURNAL,
+          NO AFTER JOURNAL,
+          CHECKSUM = DEFAULT,
+          DEFAULT MERGEBLOCKRATIO
+              (  i_clientid                 INTEGER,
+                 i_sendid                   INTEGER NOT NULL,
+                 c_subscriber_key           VARCHAR(100)     CHARACTER SET LATIN
+     NOT CASESPECIFIC NOT NULL,
+                 c_emailaddress             VARCHAR(100)     CHARACTER SET LATIN
+     NOT CASESPECIFIC,
+                 i_subscriberid             INTEGER NOT NULL,
+                 i_listid                   INTEGER,
+                 d_eventdate                TIMESTAMP(0) FORMAT
+     'yyyy-mm-ddbhh:mi:ss',
+                 c_eventtype                CHAR(6)       CHARACTER SET LATIN
+     NOT CASESPECIFIC,
+                 c_bounce_category          VARCHAR(100) CHARACTER SET LATIN NOT
+     CASESPECIFIC,
+                 i_smtp_code                INTEGER,
+                 c_bounce_reason            VARCHAR(500) CHARACTER SET LATIN NOT
+     CASESPECIFIC,
+                 c_batchid                  VARCHAR(100)  CHARACTER SET LATIN
+     NOT CASESPECIFIC NOT NULL,
+                 c_triggeredsendexternalkey VARCHAR(100)  CHARACTER SET LATIN
+     NOT CASESPECIFIC
+                 )
+            PRIMARY INDEX ( i_sendid, i_subscriberid, c_batchid )
+     ;
+**** 09:00:30 UTY1016 'CREATE' request successful.
+0008 .else;
+0009      .logoff &sysrc ;
+0010 .endif
+     ;
+
+0011 .NAME M205090015939120;
+0012 .BEGIN LOAD SESSIONS 4
+       ERRORTABLE WORKDB.ET_Bounces_Event_et
+       ERRLIMIT 100
+       SERIALIZE ON
+       CHECKPOINT 3
+       PACK 57
+       ROBUST ON
+       MACRODB WORKDB;
+     ========================================================================
+     =                                                                      =
+     =          Processing TPump Statements                                 =
+     =                                                                      =
+     ========================================================================
+
+
+
+0013 /*********************************************************
+      Define layout of the ET_Bounces_Event
+     *********************************************************/
+      .LAYOUT INPUTLAYOUT INDICATORS;
+0014 .field  i_clientid                  * VARCHAR(10);
+0015 .field  i_sendid                    * VARCHAR(10) ;
+0016 .field  c_subscriber_key            * VARCHAR(100) KEY;
+0017 .field  c_emailaddress              * VARCHAR(100) ;
+0018 .field  i_subscriberid              * VARCHAR(20) ;
+0019 .field  i_listid                    * VARCHAR(10);
+0020 .field  d_eventdate                 * VARCHAR(25);
+0021 .field  c_eventtype                 * VARCHAR(10);
+0022 .field  c_bounce_category           * VARCHAR(100);
+0023 .field  i_smtp_code                 * VARCHAR(10);
+0024 .field  c_bounce_reason             * VARCHAR(8000);
+0025 .field  c_batchid                   * VARCHAR(100) ;
+0026 .field  c_triggeredsendexternalkey  * VARCHAR(100);
+
+0027 /*********************************************************
+     Process records that are inserts as upserts.
+     *********************************************************/
+     .DML LABEL UPSERTS;
+0028 INSERT INTO WORKDB.ET_Bounces_Event_stg
+     (     i_clientid
+          ,i_sendid
+          ,c_subscriber_key
+          ,c_emailaddress
+          ,i_subscriberid
+          ,i_listid
+          ,d_eventdate
+          ,c_eventtype
+          ,c_bounce_category
+          ,i_smtp_code
+          ,c_bounce_reason
+          ,c_batchid
+          ,c_triggeredsendexternalkey
+     )
+     VALUES
+     (     :i_clientid
+          ,:i_sendid
+          ,:c_subscriber_key
+          ,:c_emailaddress
+          ,:i_subscriberid
+          ,:i_listid
+          ,convert_timestamp(cast(:d_eventdate  as char(25) ))
+          ,CAST(:c_eventtype AS CHAR(6))
+          ,:c_bounce_category
+          ,:i_smtp_code
+          ,:c_bounce_reason
+          ,:c_batchid
+          ,:c_triggeredsendexternalkey
+     );
+
+0029 /*********************************************************
+        APPLY insert record action to the staging table
+     *********************************************************/
+     .IMPORT INFILE
+     d:/edw_prod/active/ET_AnalyticsFile.20230724.090000/data/Bounces.txt
+       FROM 2
+       FORMAT VARTEXT '|'
+       LAYOUT INPUTLAYOUT
+       APPLY UPSERTS;
+0030   .END LOAD;
+**** 09:00:30 UTY6609 Starting to log on sessions...
+**** 09:00:31 UTY6610 Logged on 3 sessions.
+     ========================================================================
+     =                                                                      =
+     =          TPump Import(s) Beginning                                   =
+     =                                                                      =
+     ========================================================================
+**** 09:00:31 UTY6630 Options in effect for following TPump Import(s):
+     .       Tenacity:    4 hour limit to successfully connect load sessions.
+     .   Max Sessions:    4 session(s).
+     .   Min Sessions:    3 session(s).
+     .     Checkpoint:    3 minute(s).
+     .       Errlimit:    100 rejected record(s).
+     .   Restart Mode:    ROBUST.
+     .  Serialization:    ON.
+     .        Packing:    57 Statements per Request.
+     .   StartUp Rate:    UNLIMITED Statements per Minute.
+**** 09:00:43 UTY8802 WARNING: Rate Monitoring turned off - database TPumpMacro
+     does not exist.
+**** 09:00:43 UTY6608 Import 1 begins.
+**** 09:03:00 UTY6641 Since last chkpt., 40612 recs. in, 40612 stmts., 714 reqs
+**** 09:03:00 UTY6647 Since last chkpt., avg. DBS wait time: 191.75
+**** 09:03:00 UTY6612 Beginning final checkpoint...
+**** 09:03:00 UTY6641 Since last chkpt., 40612 recs. in, 40612 stmts., 714 reqs
+**** 09:03:00 UTY6647 Since last chkpt., avg. DBS wait time: 191.75
+**** 09:03:01 UTY6607 Checkpoint Completes with 40612 rows sent.
+**** 09:03:01 UTY6642 Import 1 statements: 40612, requests: 714
+**** 09:03:01 UTY6643 Import 1 average statements per request: 56.88
+**** 09:03:01 UTY6644 Import 1 average statements per record: 1.00
+**** 09:03:01 UTY6645 Import 1 statements/session: avg. 13537.33, min. 13426.00,
+     max. 13640.00
+**** 09:03:01 UTY6646 Import 1 requests/session: average 238.00, minimum 236.00,
+     maximum 240.00
+**** 09:03:01 UTY6648 Import 1 DBS wait time/session: avg. 45635.33, min.
+     37128.00, max. 51241.00
+**** 09:03:01 UTY6649 Import 1 DBS wait time/request: avg. 191.59, min. 157.32,
+     max. 213.50
+**** 09:03:01 UTY1823 Import processing statistics
+     .                                           IMPORT  1      Total thus far
+     .                                           =========      ==============
+     Candidate records considered:....               40612               40612
+     Apply conditions satisfied:......               40612               40612
+     Records logable to error table:..                   0                   0
+     Candidate records rejected:......                   0                   0
+**** Statistics for Apply Label : UPSERTS
+     Type:                 I
+     Database:             WORKDB
+     Table or Macro Name:  ET_Bounces_Event_stg
+     Activity:             40612
+**** 09:03:01 UTY6677 Loading phase statistics 
+              Elapsed time:   00:00:02:18(dd:hh:mm:ss)
+              CPU time:       1.10761 Seconds
+              MB/sec:         0.0484285
+              MB/cpusec:      6.03384
+**** 09:03:03 UTY0821 Error table WORKDB.ET_Bounces_Event_et is EMPTY, dropping
+     table.
+0031 .LOGOFF;
+     ========================================================================
+     =                                                                      =
+     =          Logoff/Disconnect                                           =
+     =                                                                      =
+     ========================================================================
+**** 09:03:10 UTY6216 The restart log table has been dropped.
+**** 09:03:10 UTY6212 A successful disconnect was made from the RDBMS.
+**** 09:03:10 UTY2410 Total processor time used = '1.37281 Seconds'
+     .       Start : 09:00:15 - MON JUL 24, 2023
+     .       End   : 09:03:10 - MON JUL 24, 2023
+     .       Highest return code encountered = '0'.
++ rc=0 
++ [[ 0 -ne 0 ]] 
++ ksh d:/edw_prod/tdat/check_for_error_table.btq -l EDW.default WORKDB.ET_Bounces_Event_et d:/edw_prod/tdat/ET_AnalyticsFile.Bounces_Event_load.tp 
+BTEQ 15.10.01.00 Mon Jul 24 09:03:11 2023 PID: 8516
+ 
++---------+---------+---------+---------+---------+---------+---------+----
+.RUN FILE d:/edw_prod/config/logon/EDW.default
++---------+---------+---------+---------+---------+---------+---------+----
+.logon edw/pcs_LOAD,
+
+ *** Logon successfully completed.
+ *** Teradata Database Release is 17.10.03.07                   
+ *** Teradata Database Version is 17.10.03.07                     
+ *** Transaction Semantics are BTET.
+ *** Session Character Set Name is 'ASCII'.
+ 
+ *** Total elapsed time was 2 seconds.
+ 
++---------+---------+---------+---------+---------+---------+---------+----
+ *** Encountered EOF on RUN file. Returning to stdin.
++---------+---------+---------+---------+---------+---------+---------+----
+
+.SET QUIET ON; /* Reduce the amount of output */
+ *** Type QUIET OFF; to resume output.
++---------+---------+---------+---------+---------+---------+---------+----
+  DATABASE WORKDB;
+ *** Total elapsed time was 1 second.
+
+
++---------+---------+---------+---------+---------+---------+---------+----
+
+  SHOW TABLE WORKDB.ET_Bounces_Event_et;
+ *** Failure 3807 Object 'WORKDB.ET_Bounces_Event_et' does not exist.
+                Statement# 1, Info =0 
+ *** Total elapsed time was 1 second.
+
+
++---------+---------+---------+---------+---------+---------+---------+----
+.IF ERRORCODE = 3807 THEN QUIT 0; /* Table not found */
+QUIT 0; /* Table not found */
+ *** You are now logged off from the DBC.
+ *** Exiting BTEQ...
+ *** RC (return code) = 0 
++ rc=0 
++ [[ 0 -ne 0 ]] 
++ BTEQ 
+.RUN FILE d:/edw_prod/config/logon/EDW.default;
+
+CREATE MULTISET VOLATILE TABLE ET_Bounces_Event_v, NO LOG AS
+(
+  SELECT 
+         i_clientid
+        ,i_sendid
+        ,c_subscriber_key
+        ,c_emailaddress
+        ,CASE WHEN character(trim(c_subscriber_key))=11 THEN 
+             (CASE WHEN (upper(trim(c_subscriber_key)) (casespecific) <> lower(trim(c_subscriber_key)) (casespecific)) 
+                   THEN NULL
+                   ELSE cast(c_subscriber_key AS DECIMAL(11,0))
+              END)
+              ELSE NULL
+          END as i_dmid  
+        ,i_subscriberid
+        ,i_listid
+        ,d_eventdate
+        ,c_eventtype
+        ,c_bounce_category
+        ,i_smtp_code
+        ,c_bounce_reason
+        ,c_batchid
+        ,c_triggeredsendexternalkey
+        ,' ' as c_quality_cd
+        ,CURRENT_TIMESTAMP(0) as d_timestamp
+FROM WORKDB.ET_Bounces_Event_stg
+)
+WITH DATA
+PRIMARY INDEX (i_sendid, i_dmid, c_batchid)
+ON COMMIT PRESERVE ROWS
+;
+
+.IF ERRORCODE <> 0 THEN .QUIT ERRORCODE;
+
+
+/*********************************************************
+   Capture the updates if there are any  
+*********************************************************/
+CREATE MULTISET VOLATILE TABLE ET_Bounces_Event_v2, NO LOG AS
+(   
+SELECT 
+         i_clientid
+        ,i_sendid
+        ,c_subscriber_key
+        ,c_emailaddress
+        ,i_dmid  
+        ,i_subscriberid
+        ,i_listid
+        ,d_eventdate
+        ,c_eventtype
+        ,c_bounce_category
+        ,i_smtp_code
+        ,c_bounce_reason
+        ,c_batchid
+        ,c_triggeredsendexternalkey
+        ,c_quality_cd
+        ,d_timestamp
+       FROM ET_Bounces_Event_v a 
+       WHERE EXISTS
+         (select 1 
+            FROM EDW_MAIN.ET_Bounces_Event b
+           WHERE a.c_subscriber_key = b.c_subscriber_key
+             AND a.i_sendid      = b.i_sendid
+             AND a.c_batchid      = b.c_batchid
+             AND ((a.i_dmid is null and b.i_dmid is null) or (a.i_dmid is not null and b.i_dmid is not null 
+             AND a.i_dmid = b.i_dmid)))
+ ) 
+WITH DATA
+PRIMARY INDEX(i_dmid,i_sendid,c_batchid)
+ON COMMIT PRESERVE ROWS;
+
+.IF ERRORCODE <> 0 THEN .QUIT ERRORCODE;
+
+
+/*********************************************************
+   Apply the updates  
+*********************************************************/
+
+UPDATE a
+  FROM EDW_MAIN.ET_Bounces_Event a,
+       ET_Bounces_Event_v2 b
+   SET   i_clientid = b.i_clientid
+        ,c_emailaddress = b.c_emailaddress
+        ,i_subscriberid = b.i_subscriberid
+        ,i_listid = b.i_listid
+        ,d_eventdate = b.d_eventdate
+        ,c_eventtype = b.c_eventtype
+        ,c_bounce_category = b.c_bounce_category
+        ,i_smtp_code = b.i_smtp_code
+        ,c_bounce_reason = b.c_bounce_reason
+        ,c_triggeredsendexternalkey = b.c_triggeredsendexternalkey
+        ,c_quality_cd = ' '
+        ,d_timestamp = CURRENT_TIMESTAMP(0)
+  WHERE a.c_subscriber_key = b.c_subscriber_key
+    AND a.i_sendid         = b.i_sendid
+    AND a.c_batchid        = b.c_batchid
+    AND ((a.i_dmid is null and b.i_dmid is null) or (a.i_dmid is not null and b.i_dmid is not null 
+    AND a.i_dmid = b.i_dmid));
+
+.IF ERRORCODE <> 0 THEN .QUIT ERRORCODE;
+
+
+/***********************
+   Identify the inserts  
+**************************/
+
+CREATE MULTISET VOLATILE TABLE ET_Bounces_Event_v3, NO LOG AS
+(   
+SELECT 
+         i_clientid
+        ,i_sendid
+        ,c_subscriber_key
+        ,c_emailaddress
+        ,i_dmid  
+        ,i_subscriberid
+        ,i_listid
+        ,d_eventdate
+        ,c_eventtype
+        ,c_bounce_category
+        ,i_smtp_code
+        ,c_bounce_reason
+        ,c_batchid
+        ,c_triggeredsendexternalkey
+        ,c_quality_cd
+        ,d_timestamp
+       FROM ET_Bounces_Event_v a 
+   WHERE NOT EXISTS
+       (select 1 
+          from ET_Bounces_Event_v2 b
+         where a.c_subscriber_key = b.c_subscriber_key
+           AND a.i_sendid      = b.i_sendid
+            AND a.c_batchid      = b.c_batchid
+            AND ((a.i_dmid is null and b.i_dmid is null) or (a.i_dmid is not null and b.i_dmid is not null 
+            AND a.i_dmid = b.i_dmid)))
+ ) 
+WITH DATA
+PRIMARY INDEX(i_dmid,i_sendid,c_batchid)
+ON COMMIT PRESERVE ROWS;
+
+.IF ERRORCODE <> 0 THEN .QUIT ERRORCODE;
+
+
+  
+INSERT INTO EDW_MAIN.ET_Bounces_Event
+(        i_clientid
+        ,i_sendid
+        ,c_subscriber_key
+        ,c_emailaddress
+        ,i_dmid  
+        ,i_subscriberid
+        ,i_listid
+        ,d_eventdate
+        ,c_eventtype
+        ,c_bounce_category
+        ,i_smtp_code
+        ,c_bounce_reason
+        ,c_batchid
+        ,c_triggeredsendexternalkey
+        ,c_quality_cd
+        ,d_timestamp
+)
+SELECT
+         i_clientid
+        ,i_sendid
+        ,c_subscriber_key
+        ,c_emailaddress
+        ,i_dmid  
+        ,i_subscriberid
+        ,i_listid
+        ,d_eventdate
+        ,c_eventtype
+        ,c_bounce_category
+        ,i_smtp_code
+        ,c_bounce_reason
+        ,c_batchid
+        ,c_triggeredsendexternalkey
+        ,c_quality_cd
+        ,d_timestamp
+ from   ET_Bounces_Event_v3;
+ 
+ .IF ERRORCODE <> 0 THEN .QUIT ERRORCODE;
+
+.QUIT;
+BTEQ 15.10.01.00 Mon Jul 24 09:03:14 2023 PID: 9916
+ 
++---------+---------+---------+---------+---------+---------+---------+----
+.RUN FILE d:/edw_prod/config/logon/EDW.default
++---------+---------+---------+---------+---------+---------+---------+----
+.logon edw/pcs_LOAD,
+
+ *** Logon successfully completed.
+ *** Teradata Database Release is 17.10.03.07                   
+ *** Teradata Database Version is 17.10.03.07                     
+ *** Transaction Semantics are BTET.
+ *** Session Character Set Name is 'ASCII'.
+ 
+ *** Total elapsed time was 2 seconds.
+ 
++---------+---------+---------+---------+---------+---------+---------+----
+ *** Encountered EOF on RUN file. Returning to stdin.
++---------+---------+---------+---------+---------+---------+---------+----
+
+CREATE MULTISET VOLATILE TABLE ET_Bounces_Event_v, NO LOG AS
+(
+  SELECT 
+         i_clientid
+        ,i_sendid
+        ,c_subscriber_key
+        ,c_emailaddress
+        ,CASE WHEN character(trim(c_subscriber_key))=11 THEN 
+             (CASE WHEN (upper(trim(c_subscriber_key)) (casespecific) <> l
+ower(trim(c_subscriber_key)) (casespecific)) 
+                   THEN NULL
+                   ELSE cast(c_subscriber_key AS DECIMAL(11,0))
+              END)
+              ELSE NULL
+          END as i_dmid  
+        ,i_subscriberid
+        ,i_listid
+        ,d_eventdate
+        ,c_eventtype
+        ,c_bounce_category
+        ,i_smtp_code
+        ,c_bounce_reason
+        ,c_batchid
+        ,c_triggeredsendexternalkey
+        ,' ' as c_quality_cd
+        ,CURRENT_TIMESTAMP(0) as d_timestamp
+FROM WORKDB.ET_Bounces_Event_stg
+)
+WITH DATA
+PRIMARY INDEX (i_sendid, i_dmid, c_batchid)
+ON COMMIT PRESERVE ROWS
+;
+
+ *** Table has been created. 
+ *** Total elapsed time was 3 seconds.
+
+
++---------+---------+---------+---------+---------+---------+---------+----
+
+.IF ERRORCODE <> 0 THEN .QUIT ERRORCODE;
++---------+---------+---------+---------+---------+---------+---------+----
+
+
+/*********************************************************
+   Capture the updates if there are any  
+*********************************************************/
+CREATE MULTISET VOLATILE TABLE ET_Bounces_Event_v2, NO LOG AS
+(   
+SELECT 
+         i_clientid
+        ,i_sendid
+        ,c_subscriber_key
+        ,c_emailaddress
+        ,i_dmid  
+        ,i_subscriberid
+        ,i_listid
+        ,d_eventdate
+        ,c_eventtype
+        ,c_bounce_category
+        ,i_smtp_code
+        ,c_bounce_reason
+        ,c_batchid
+        ,c_triggeredsendexternalkey
+        ,c_quality_cd
+        ,d_timestamp
+       FROM ET_Bounces_Event_v a 
+       WHERE EXISTS
+         (select 1 
+            FROM EDW_MAIN.ET_Bounces_Event b
+           WHERE a.c_subscriber_key = b.c_subscriber_key
+             AND a.i_sendid      = b.i_sendid
+             AND a.c_batchid      = b.c_batchid
+             AND ((a.i_dmid is null and b.i_dmid is null) or (a.i_dmid is 
+not null and b.i_dmid is not null 
+             AND a.i_dmid = b.i_dmid)))
+ ) 
+WITH DATA
+PRIMARY INDEX(i_dmid,i_sendid,c_batchid)
+ON COMMIT PRESERVE ROWS;
+
+ *** Table has been created. 
+ *** Total elapsed time was 44 seconds.
+
+
++---------+---------+---------+---------+---------+---------+---------+----
+
+.IF ERRORCODE <> 0 THEN .QUIT ERRORCODE;
++---------+---------+---------+---------+---------+---------+---------+----
+
+
+/*********************************************************
+   Apply the updates  
+*********************************************************/
+
+UPDATE a
+  FROM EDW_MAIN.ET_Bounces_Event a,
+       ET_Bounces_Event_v2 b
+   SET   i_clientid = b.i_clientid
+        ,c_emailaddress = b.c_emailaddress
+        ,i_subscriberid = b.i_subscriberid
+        ,i_listid = b.i_listid
+        ,d_eventdate = b.d_eventdate
+        ,c_eventtype = b.c_eventtype
+        ,c_bounce_category = b.c_bounce_category
+        ,i_smtp_code = b.i_smtp_code
+        ,c_bounce_reason = b.c_bounce_reason
+        ,c_triggeredsendexternalkey = b.c_triggeredsendexternalkey
+        ,c_quality_cd = ' '
+        ,d_timestamp = CURRENT_TIMESTAMP(0)
+  WHERE a.c_subscriber_key = b.c_subscriber_key
+    AND a.i_sendid         = b.i_sendid
+    AND a.c_batchid        = b.c_batchid
+    AND ((a.i_dmid is null and b.i_dmid is null) or (a.i_dmid is not null 
+and b.i_dmid is not null 
+    AND a.i_dmid = b.i_dmid));
+
+ *** Update completed. No rows changed. 
+ *** Total elapsed time was 2 seconds.
+
+
++---------+---------+---------+---------+---------+---------+---------+----
+
+.IF ERRORCODE <> 0 THEN .QUIT ERRORCODE;
++---------+---------+---------+---------+---------+---------+---------+----
+
+
+/***********************
+   Identify the inserts  
+**************************/
+
+CREATE MULTISET VOLATILE TABLE ET_Bounces_Event_v3, NO LOG AS
+(   
+SELECT 
+         i_clientid
+        ,i_sendid
+        ,c_subscriber_key
+        ,c_emailaddress
+        ,i_dmid  
+        ,i_subscriberid
+        ,i_listid
+        ,d_eventdate
+        ,c_eventtype
+        ,c_bounce_category
+        ,i_smtp_code
+        ,c_bounce_reason
+        ,c_batchid
+        ,c_triggeredsendexternalkey
+        ,c_quality_cd
+        ,d_timestamp
+       FROM ET_Bounces_Event_v a 
+   WHERE NOT EXISTS
+       (select 1 
+          from ET_Bounces_Event_v2 b
+         where a.c_subscriber_key = b.c_subscriber_key
+           AND a.i_sendid      = b.i_sendid
+            AND a.c_batchid      = b.c_batchid
+            AND ((a.i_dmid is null and b.i_dmid is null) or (a.i_dmid is n
+ot null and b.i_dmid is not null 
+            AND a.i_dmid = b.i_dmid)))
+ ) 
+WITH DATA
+PRIMARY INDEX(i_dmid,i_sendid,c_batchid)
+ON COMMIT PRESERVE ROWS;
+
+ *** Table has been created. 
+ *** Total elapsed time was 3 seconds.
+
+
++---------+---------+---------+---------+---------+---------+---------+----
+
+.IF ERRORCODE <> 0 THEN .QUIT ERRORCODE;
++---------+---------+---------+---------+---------+---------+---------+----
+
+
+  
+INSERT INTO EDW_MAIN.ET_Bounces_Event
+(        i_clientid
+        ,i_sendid
+        ,c_subscriber_key
+        ,c_emailaddress
+        ,i_dmid  
+        ,i_subscriberid
+        ,i_listid
+        ,d_eventdate
+        ,c_eventtype
+        ,c_bounce_category
+        ,i_smtp_code
+        ,c_bounce_reason
+        ,c_batchid
+        ,c_triggeredsendexternalkey
+        ,c_quality_cd
+        ,d_timestamp
+)
+SELECT
+         i_clientid
+        ,i_sendid
+        ,c_subscriber_key
+        ,c_emailaddress
+        ,i_dmid  
+        ,i_subscriberid
+        ,i_listid
+        ,d_eventdate
+        ,c_eventtype
+        ,c_bounce_category
+        ,i_smtp_code
+        ,c_bounce_reason
+        ,c_batchid
+        ,c_triggeredsendexternalkey
+        ,c_quality_cd
+        ,d_timestamp
+ from   ET_Bounces_Event_v3;
+
+ *** Insert completed. 40612 rows added. 
+ *** Total elapsed time was 13 seconds.
+
+
++---------+---------+---------+---------+---------+---------+---------+----
+ 
+ .IF ERRORCODE <> 0 THEN .QUIT ERRORCODE;
++---------+---------+---------+---------+---------+---------+---------+----
+
+.QUIT;
+ *** You are now logged off from the DBC.
+ *** Exiting BTEQ...
+ *** RC (return code) = 0 
++ rc=0 
++ [[ 0 -ne 0 ]] 
++ exit 0 
+Ended (10516) rc=0 at 2023-07-24 09:04:21

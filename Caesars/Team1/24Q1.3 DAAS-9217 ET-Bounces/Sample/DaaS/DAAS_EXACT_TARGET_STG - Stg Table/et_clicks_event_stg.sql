@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS DAAS_EXACT_TARGET_STG.ET_CLICKS_EVENT_STG
+(
+	i_clientid 					INTEGER,
+	i_sendid 					INTEGER NOT NULL,
+	c_subscriber_key 			VARCHAR(100) NOT NULL,
+	c_emailaddress 				VARCHAR(100),
+	i_subscriberid 				INTEGER,
+	i_listid 					INTEGER,
+	d_eventdate 				TIMESTAMP_NTZ(9),
+	c_eventtype 				VARCHAR(6) ,
+	i_sendurlid 				INTEGER,
+	i_urlid 					INTEGER,
+	c_url 						VARCHAR(4000),
+	c_alias 					VARCHAR(1024),
+	c_batchid 					VARCHAR(100),
+	c_triggeredsendexternalkey 	VARCHAR(100),
+	SOURCE_SYSTEM_NAME 			VARCHAR(100),
+	TIME_ZONE 					VARCHAR(100),
+	CREATED_DATE 				TIMESTAMP_NTZ(9),
+	CREATED_BY					VARCHAR(100),
+	UPDATED_DATE 				TIMESTAMP_NTZ(9),
+	UPDATED_BY 					VARCHAR(100),
+	REPLAY_COUNTER 				NUMBER(38,0),
+	SOURCE_FILE_NAME 			VARCHAR(200)
+);
